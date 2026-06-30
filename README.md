@@ -8,7 +8,7 @@
 </h1>
 
 <p align="center">
-  A simple Slack bot that lets users look up Minecraft PvP tier data directly from Slack.
+  A simple Slack bot that lets users look up Minecraft PvP tier data and profile directly from Slack.
 </p>
 
 <p align="center">
@@ -25,6 +25,10 @@ My **MCTiers Bot** connects to the MCTiers / PvPTiers API and lets users quickly
 /pvptiers <username>
 ```
 
+```bash
+/mctiers <username>
+```
+
 The bot will fetch the player’s PvP profile and return their tier information.
 
 ---
@@ -34,6 +38,18 @@ The bot will fetch the player’s PvP profile and return their tier information.
 ```bash
 /pvptiers <username>
 ```
+Get's the PVPTiers Tier information for the user
+
+```bash
+/mctiers <username>
+```
+Get's the MCTiers Tier information for the user
+
+```bash
+/mc-profile <username>
+```
+Get's the Minecraft profile information of the user, including both tiers
+
 
 Example:
 
