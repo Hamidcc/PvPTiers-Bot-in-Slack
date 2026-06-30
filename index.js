@@ -124,7 +124,6 @@ function findTierValue(obj) {
 }
 
 function extractResults(data) {
-
   const result = {};
   for (const kit of kits) result[kit] = "N/A";
 
@@ -152,7 +151,6 @@ function extractResults(data) {
           cleanKitName(item?.mode) ||
           cleanKitName(item?.category) ||
           cleanKitName(item?.queue);
-
         const tier = findTierValue(item);
 
         if (kit && tier !== "N/A") result[kit] = tier;
@@ -163,7 +161,6 @@ function extractResults(data) {
       for (const [key, value] of Object.entries(root)) {
         const kit = cleanKitName(key);
         const tier = findTierValue(value);
-
         if (kit && tier !== "N/A") result[kit] = tier;
       }
     }
@@ -210,6 +207,34 @@ function formatProfile(username, results) {
 
   const lines = [];
 
+  lines.push(`Server: McTiers`);
+  lines.push(`Username: ${username}`);
+  lines.push(`Highest Tier: ${highest.kit.toUpperCase()} | ${highest.tier}`);
+  lines.push("");
+  lines.push("Tiers:");
+  lines.push(`${pad("KIT", 14)} | MCTIERS`);
+  lines.push(`${"-".repeat(14)} | ${"-".repeat(7)}`);
+
+  for (const row of visibleRows) {
+    lines.push(`${pad(row.kit, 14)} | ${row.tier}`);
+  }
+
+  return "```" + lines.join("\n") + "```";
+}
+
+function formatPvpProfile(username, results) {
+  const highest = getHighestTier(results);
+
+  const visibleRows = Object.entries(results)
+    .filter(([kit, tier]) => tier !== "N/A" || kits.includes(kit))
+    .map(([kit, tier]) => ({
+      kit: kitNames[kit] || kit,
+      tier
+    }));
+
+  const lines = [];
+
+  lines.push(`Server: PVPTiers`);
   lines.push(`Username: ${username}`);
   lines.push(`Highest Tier: ${highest.kit.toUpperCase()} | ${highest.tier}`);
   lines.push("");
@@ -273,6 +298,55 @@ async function fetchMcTiers(username) {
   }
 }
 
+async function fetchPVPtiers(username) {
+  const url = `https://pvptiers.com/api/search_profile/${encodeURIComponent(username)}`;
+
+  try {
+    const res = await axios.get(url, {
+      timeout: 10000,
+      validateStatus: () => true,
+      headers: {
+        "User-Agent": "Mozilla/5.0 SlackMCTiersBot/1.0",
+        Accept: "application/json"
+      }
+    });
+
+    if (res.status === 404) {
+      return {
+        ok: false,
+        message: `No PVPTiers profile found for ${username}.`
+      };
+    }
+
+    if (res.status >= 400) {
+      return {
+        ok: false,
+        message: `PVPTiers API error: HTTP ${res.status}`
+      };
+    }
+
+    const results = extractResults(res.data);
+
+    return {
+      ok: true,
+      username:
+        res.data?.name ||
+        res.data?.username ||
+        res.data?.player?.name ||
+        res.data?.profile?.name ||
+        res.data?.data?.name ||
+        username,
+      results
+    };
+  } catch (err) {
+
+    return {
+      ok: false,
+      message: `Request failed: ${err.message}`
+    };
+  }
+}
+
 app.command("/pvptiers", async ({ command, ack, respond }) => {
   await ack();
 
@@ -284,6 +358,7 @@ app.command("/pvptiers", async ({ command, ack, respond }) => {
   }
 
   const profile = await fetchMcTiers(username);
+  const profile2 = await fetchPVPtiers(username);
 
   if (!profile.ok) {
     await respond(profile.message);
@@ -291,9 +366,13 @@ app.command("/pvptiers", async ({ command, ack, respond }) => {
   }
 
   await respond(formatProfile(profile.username, profile.results));
+
+  if (profile2.ok) {
+    await respond(formatPvpProfile(profile2.username, profile2.results));
+  }
 });
 
 (async () => {
   await app.start(Number(process.env.PORT) || 3000);
-  console.log("tier Slack bot running");
+  console.log("Tier Slack bot running");
 })();
