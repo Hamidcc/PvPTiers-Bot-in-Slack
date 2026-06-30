@@ -298,6 +298,36 @@ async function fetchMcTiers(username) {
   }
 }
 
+function tierLabel(result) {
+  if (!result || result.tier == null || result.pos == null) return null;
+
+  const prefix = result.pos === 0 ? "HT" : "LT";
+  return `${prefix}${result.tier}`;
+}
+
+function getHighestTierForProfile(results) {
+  if (!results) return "Unknown";
+
+  let best = null;
+
+  for (const [mode, result] of Object.entries(results)) {
+    const label = tierLabel(result);
+    if (!label) continue;
+
+    if (!best || tierScore(label) > tierScore(best.label)) {
+      best = {
+        mode,
+        label
+      };
+    }
+  }
+
+  if (!best) return "Unknown";
+
+  return `${best.label} (${best.mode})`;
+}
+
+
 async function fetchPVPtiers(username) {
   const url = `https://pvptiers.com/api/search_profile/${encodeURIComponent(username)}`;
 
@@ -347,6 +377,52 @@ async function fetchPVPtiers(username) {
   }
 }
 
+async function fetchMinecraftProfile(username) {
+  const res = await fetch(`https://api.mojang.com/users/profiles/minecraft/${encodeURIComponent(username)}`);
+
+  if (!res.ok) {
+    return { ok: false, message: "Minecraft account not found." };
+  }
+
+  const data = await res.json();
+
+  return {
+    ok: true,
+    username: data.name,
+    uuid: data.id,
+    dashedUuid: dashUuid(data.id),
+    skinUrl: `https://crafatar.com/renders/body/${data.id}?overlay`
+  };
+}
+
+function dashUuid(uuid) {
+  return uuid.replace(
+    /^(.{8})(.{4})(.{4})(.{4})(.{12})$/,
+    "$1-$2-$3-$4-$5"
+  );
+}
+
+async function fetchAccountCreationDate(username) {
+  try {
+    const res = await fetch(`https://api.ashcon.app/mojang/v2/user/${encodeURIComponent(username)}`);
+
+    if (!res.ok) return null;
+
+    const data = await res.json();
+
+    if (!data.created_at) return null;
+
+    return new Date(data.created_at).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric"
+    });
+  } catch {
+    return null;
+  }
+}
+
+
 app.command("/pvptiers", async ({ command, ack, respond }) => {
   await ack();
 
@@ -357,14 +433,87 @@ app.command("/pvptiers", async ({ command, ack, respond }) => {
     return;
   }
 
+
+  const profile2 = await fetchPVPtiers(username);
+
+  if (profile2.ok) {
+    await respond(formatPvpProfile(profile2.username, profile2.results));
+  }
+
+});
+
+app.command("/mctiers", async ({ command, ack, respond }) => {
+  await ack();
+
+  const username = command.text.trim();
+
+  if (!username) {
+    await respond("Usage: `/mctiers <minecraft_username>`");
+    return;
+  }
   const profile = await fetchMcTiers(username);
   const profile2 = await fetchPVPtiers(username);
+  if (!profile.ok) {
+    await respond(profile.message);
+    return;
+  }
+
+  await respond(formatProfile(profile.username, profile.results));
+});
+
+function formatMinecraftInfo(player, createdAt, highestTier) {
+  return {
+    blocks: [
+      {
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text:
+            `*Minecraft Profile*\n` +
+            `*Username:* \`${player.username}\`\n` +
+            `*UUID:* \`${player.dashedUuid}\`\n` +
+            `*Created:* ${createdAt || "Unknown"}\n` +
+            `*Highest Tier:* ${highestTier}`
+        },
+        accessory: {
+          type: "image",
+          image_url: player.skinUrl,
+          alt_text: `${player.username} skin`
+        }
+      }
+    ]
+  };
+}
+
+app.command("/mc-profile", async ({ command, ack, respond }) => {
+  await ack();
+
+  const username = command.text.trim();
+
+  if (!username) {
+    await respond("Usage: `/mc-profile <minecraft_username>`");
+    return;
+  }
+
+  const player = await fetchMinecraftProfile(username);
+
+  if (!player.ok) {
+    await respond(player.message);
+    return;
+  }
+
+  const profile = await fetchMcTiers(player.username);
+  const profile2 = await fetchPVPtiers(player.username);
+  const createdAt = await fetchAccountCreationDate(player.username);
 
   if (!profile.ok) {
     await respond(profile.message);
     return;
   }
 
+  const highestTier = getHighestTierForProfile(profile.results);
+
+  await respond(formatMinecraftInfo(player, createdAt, highestTier));
   await respond(formatProfile(profile.username, profile.results));
 
   if (profile2.ok) {
