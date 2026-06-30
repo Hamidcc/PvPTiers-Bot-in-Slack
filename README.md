@@ -148,6 +148,20 @@ If everything is configured correctly, the bot should start and listen for Slack
 
 ---
 
+## Credits:
+
+1. `utf64` (that's me!)
+
+**AI Usage:**
+*This project barely uses any AI work, here is where AI was utilized:*
+1. Search through the MCtiers / PVPTiers API to find out how I can request statistics about specific players.
+2. Demonstrate how I can use axiom to request data from APIs
+3. Debug the code when API requests failed (The AI model failed to fix this problem, so I had to search for the correct API my self and fix the script.)
+
+> The AI utilized is `ChatGPT-5.5 by OpenAI`
+
+---
+
 ## Repository
 
 ```text
