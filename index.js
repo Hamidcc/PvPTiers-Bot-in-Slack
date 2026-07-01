@@ -436,10 +436,11 @@ app.command("/pvptiers", async ({ command, ack, respond }) => {
 
   const profile2 = await fetchPVPtiers(username);
 
-  if (profile2.ok) {
-    await respond(formatPvpProfile(profile2.username, profile2.results));
+  if (!profile2.ok) {
+    await respond(profile.message);
+    return;
   }
-
+    await respond(formatPvpProfile(profile2.username, profile2.results));
 });
 
 app.command("/mctiers", async ({ command, ack, respond }) => {
@@ -452,7 +453,7 @@ app.command("/mctiers", async ({ command, ack, respond }) => {
     return;
   }
   const profile = await fetchMcTiers(username);
-  const profile2 = await fetchPVPtiers(username);
+
   if (!profile.ok) {
     await respond(profile.message);
     return;
