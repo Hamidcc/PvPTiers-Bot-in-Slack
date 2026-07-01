@@ -440,7 +440,7 @@ app.command("/pvptiers", async ({ command, ack, respond }) => {
     await respond(profile.message);
     return;
   }
-    await respond(formatPvpProfile(profile2.username, profile2.results));
+  await respond(formatPvpProfile(profile2.username, profile2.results));
 });
 
 app.command("/mctiers", async ({ command, ack, respond }) => {
@@ -517,9 +517,11 @@ app.command("/mc-profile", async ({ command, ack, respond }) => {
   await respond(formatMinecraftInfo(player, createdAt, highestTier));
   await respond(formatProfile(profile.username, profile.results));
 
-  if (profile2.ok) {
-    await respond(formatPvpProfile(profile2.username, profile2.results));
+  if (!profile2.ok) {
+    await respond(profile.message);
+    return;
   }
+  await respond(formatPvpProfile(profile2.username, profile2.results));
 });
 
 (async () => {
